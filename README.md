@@ -57,7 +57,7 @@ jobs:
           files: repos/**
       # 根据变动的配置文件，增量同步
       - name: Sync changed configs
-        uses: myml/action-sync@main
+        uses: linuxdeepin/action-sync@main
         if: steps.changed-configs.outputs.any_changed == 'true'
         with:
           app_id: 164400
@@ -82,7 +82,7 @@ jobs:
           echo all configs $all_configs
           echo "::set-output name=ALL_CONFIGS::$all_configs"
       - name: Sync changed files
-        uses: myml/action-sync@main
+        uses: linuxdeepin/action-sync@main
         if: steps.changed-files.outputs.any_changed == 'true'
         with:
           app_id: 164400
