@@ -33,7 +33,7 @@ runs:
       shell: bash
       run: |
         go env -w GO111MODULE=on
-        go install github.com/linuxdeepin/action-sync@main
+        go install github.com/myml/action-sync@main
     - name: command
       shell: bash
       run: action-sync -app_id=${{ inputs.app_id }} -installation_id=${{ inputs.installation_id }} -files="${{ inputs.files }}" -message="${{ inputs.message }}"

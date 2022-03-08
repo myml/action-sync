@@ -1,4 +1,4 @@
-module github.com/linuxdeepin/action-sync
+module github.com/myml/action-sync
 
 go 1.17
 
