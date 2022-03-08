@@ -86,7 +86,7 @@ func main() {
 				log.Fatal(err)
 			}
 			// match branch
-			if config.Branches == nil {
+			if len(config.Branches) == 0 {
 				for i := range branches {
 					syncBranches = append(syncBranches, *branches[i].Name)
 				}
