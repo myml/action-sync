@@ -141,7 +141,7 @@ func main() {
 			pr, _, err := client.PullRequests.Create(ctx, branch.Owner, branch.Repo, &github.NewPullRequest{
 				Title:               &message,
 				Head:                github.String(branch2Ref(branch.Branch)),
-				Base:                github.String(branch2Ref(branch.Branch)),
+				Base:                github.String(branch2Ref(branch.Base)),
 				MaintainerCanModify: github.Bool(true),
 			})
 			if err != nil {
@@ -184,7 +184,6 @@ func split(dest string) (owner, repo, path string, err error) {
 }
 
 func sendFile(ctx context.Context, client *github.Client, localFile string, owner, repo, path, message string, branch string) (_changed bool, _err error) {
-
 	fileContent, _, resp, err := client.Repositories.GetContents(
 		ctx, owner, repo, path,
 		&github.RepositoryContentGetOptions{Ref: branch},
