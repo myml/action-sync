@@ -108,7 +108,8 @@ func main() {
 			for i := range syncBranches {
 				key := fmt.Sprintf("%s/%s/%s", owner, repo, syncBranches[i])
 				var branch Branch
-				if _, ok := cleanupBranch[key]; !ok {
+				branch, ok := cleanupBranch[key]
+				if !ok {
 					tempBranch := fmt.Sprintf("sync-file-to-%s_%d", syncBranches[i], time.Now().Unix())
 					tempRef := fmt.Sprintf("refs/heads/%s", tempBranch)
 					ref, _, err := client.Git.GetRef(ctx, owner, repo, fmt.Sprintf("heads/%s", syncBranches[i]))
