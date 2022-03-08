@@ -41,7 +41,7 @@ func main() {
 	flag.StringVar(&message, "message", "chore: Sync by .github", "commit message")
 	flag.StringVar(&files, "files", "", "config files, separated by spaces")
 	flag.BoolVar(&dryRun, "dryRun", false, "dry run")
-	flag.BoolVar(&autoMerge, "autoMerge", false, "auto merge")
+	flag.BoolVar(&autoMerge, "autoMerge", true, "auto merge")
 	flag.Parse()
 	if appID == 0 || installationID == 0 || len(message) == 0 || len(files) == 0 {
 		flag.PrintDefaults()
@@ -55,6 +55,9 @@ func main() {
 	client := github.NewClient(&http.Client{Transport: itr})
 	ctx := context.Background()
 
+	if true {
+		return
+	}
 	// Sync all repositories if do not repos changed
 	for _, file := range strings.Fields(files) {
 		data, err := os.ReadFile(file)
@@ -110,7 +113,7 @@ func main() {
 				var branch Branch
 				branch, ok := cleanupBranch[key]
 				if !ok {
-					tempBranch := fmt.Sprintf("sync-file-to-%s_%d", syncBranches[i], time.Now().Unix())
+					tempBranch := fmt.Sprintf("sync/t_%d/%s", time.Now().Unix(), syncBranches[i])
 					tempRef := fmt.Sprintf("refs/heads/%s", tempBranch)
 					ref, _, err := client.Git.GetRef(ctx, owner, repo, fmt.Sprintf("heads/%s", syncBranches[i]))
 					if err != nil {
