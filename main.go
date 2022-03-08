@@ -55,9 +55,6 @@ func main() {
 	client := github.NewClient(&http.Client{Transport: itr})
 	ctx := context.Background()
 
-	if true {
-		return
-	}
 	// Sync all repositories if do not repos changed
 	for _, file := range strings.Fields(files) {
 		data, err := os.ReadFile(file)
