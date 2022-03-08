@@ -33,6 +33,7 @@ runs:
       shell: bash
       run: |
         go env -w GO111MODULE=on
+        go get -u github.com/myml/action-sync@dev
         go install github.com/myml/action-sync@dev
     - name: command
       shell: bash
