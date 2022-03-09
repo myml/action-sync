@@ -263,6 +263,7 @@ func deleteFile(ctx context.Context, client *github.Client, owner, repo, path, m
 	_, _, err = client.Repositories.DeleteFile(ctx, owner, repo, path, &github.RepositoryContentFileOptions{
 		Message: &message,
 		SHA:     fileContent.SHA,
+		Branch:  &branch,
 	})
 	if err != nil {
 		return false, fmt.Errorf("delete file: %w", err)
