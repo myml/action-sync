@@ -176,6 +176,7 @@ func main() {
 			if autoMerge {
 				_, _, err = client.PullRequests.CreateReview(ctx, branch.Owner, branch.Repo, pr.GetNumber(), &github.PullRequestReviewRequest{
 					Event: github.String("APPROVE"),
+					Body:  github.String("Auto Marge"),
 				})
 				if err != nil {
 					log.Println("approve pull request: %w", err)
