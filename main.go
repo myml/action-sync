@@ -140,9 +140,18 @@ func main() {
 					branch = Branch{Owner: owner, Repo: repo, Base: syncBranches[i], Branch: tempBranch}
 					cleanupBranch[key] = branch
 				}
-				changed, err := sendFile(ctx, client, config.Src, owner, repo, path, message, branch.Branch)
-				if err != nil {
-					log.Fatal(err)
+				// put file
+				var changed bool
+				if config.Delete {
+					changed, err = deleteFile(ctx, client, owner, repo, path, message, branch.Branch)
+					if err != nil {
+						log.Fatal(err)
+					}
+				} else {
+					changed, err = sendFile(ctx, client, config.Src, owner, repo, path, message, branch.Branch)
+					if err != nil {
+						log.Fatal(err)
+					}
 				}
 				if changed {
 					log.Printf("\t\tBranch Sync: %s TempBranch: %s\n", branch.Base, branch.Branch)
@@ -234,5 +243,30 @@ func sendFile(ctx context.Context, client *github.Client, localFile string, owne
 			Branch:  &branch,
 		},
 	)
+	if err != nil {
+		return false, fmt.Errorf("update file: %w", err)
+	}
+	return true, nil
+}
+
+func deleteFile(ctx context.Context, client *github.Client, owner, repo, path, message, branch string) (_changed bool, _err error) {
+	fileContent, _, resp, err := client.Repositories.GetContents(
+		ctx, owner, repo, path,
+		&github.RepositoryContentGetOptions{Ref: branch},
+	)
+	if err != nil {
+		if resp.StatusCode != http.StatusNotFound {
+			return false, fmt.Errorf("get content: %w", err)
+		}
+		return false, nil
+	}
+	_, _, err = client.Repositories.DeleteFile(ctx, owner, repo, path, &github.RepositoryContentFileOptions{
+		Message: &message,
+		SHA:     fileContent.SHA,
+		Branch:  &branch,
+	})
+	if err != nil {
+		return false, fmt.Errorf("delete file: %w", err)
+	}
 	return true, nil
 }
