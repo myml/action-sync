@@ -22,6 +22,7 @@ type Config struct {
 	Src      string   `json:"src"`
 	Dest     string   `json:"dest"`
 	Branches []string `json:"branches"`
+	Delete   bool     `json:"delete"`
 }
 type Branch struct {
 	Owner  string
@@ -29,6 +30,8 @@ type Branch struct {
 	Branch string
 	Base   string
 }
+
+var tempBranchRegexp = regexp.MustCompile(`sync/t_\d+`)
 
 func main() {
 	privateKey := []byte(os.Getenv("PRIVATE_KEY"))
@@ -79,16 +82,28 @@ func main() {
 			if dryRun {
 				continue
 			}
-
-			var syncBranches []string
-			branches, _, err := client.Repositories.ListBranches(ctx, owner, repo, nil)
-			if err != nil {
-				log.Fatal(err)
+			// get all branch
+			var branches []*github.Branch
+			listBranchOpt := github.ListOptions{}
+			for {
+				bs, resp, err := client.Repositories.ListBranches(ctx, owner, repo, &listBranchOpt)
+				if err != nil {
+					log.Fatal(err)
+				}
+				branches = append(branches, bs...)
+				if resp.NextPage == 0 {
+					break
+				}
+				listBranchOpt.Page = resp.NextPage
 			}
+			var syncBranches []string
 			// match branch
 			if len(config.Branches) == 0 {
 				for i := range branches {
-					syncBranches = append(syncBranches, *branches[i].Name)
+					if tempBranchRegexp.MatchString(branches[i].GetName()) {
+						continue
+					}
+					syncBranches = append(syncBranches, branches[i].GetName())
 				}
 			} else {
 				for i := range config.Branches {
@@ -109,6 +124,7 @@ func main() {
 				key := fmt.Sprintf("%s/%s/%s", owner, repo, syncBranches[i])
 				var branch Branch
 				branch, ok := cleanupBranch[key]
+				// create temp branch
 				if !ok {
 					tempBranch := fmt.Sprintf("sync/t_%d/%s", time.Now().Unix(), syncBranches[i])
 					tempRef := fmt.Sprintf("refs/heads/%s", tempBranch)
@@ -124,10 +140,18 @@ func main() {
 					branch = Branch{Owner: owner, Repo: repo, Base: syncBranches[i], Branch: tempBranch}
 					cleanupBranch[key] = branch
 				}
-
-				changed, err := sendFile(ctx, client, config.Src, owner, repo, path, message, branch.Branch)
-				if err != nil {
-					log.Fatal(err)
+				// put file
+				var changed bool
+				if config.Delete {
+					changed, err = deleteFile(ctx, client, owner, repo, path, message, branch.Branch)
+					if err != nil {
+						log.Fatal(err)
+					}
+				} else {
+					changed, err = sendFile(ctx, client, config.Src, owner, repo, path, message, branch.Branch)
+					if err != nil {
+						log.Fatal(err)
+					}
 				}
 				if changed {
 					log.Printf("\t\tBranch Sync: %s TempBranch: %s\n", branch.Base, branch.Branch)
@@ -219,102 +243,29 @@ func sendFile(ctx context.Context, client *github.Client, localFile string, owne
 			Branch:  &branch,
 		},
 	)
+	if err != nil {
+		return false, fmt.Errorf("update file: %w", err)
+	}
 	return true, nil
 }
 
-// Deprecated
-func commit(ctx context.Context, client *github.Client, owner, repo, branch, message string, files []string) (string, error) {
-	currentRef, _, err := client.Git.GetRef(ctx, owner, repo, "heads/"+branch)
-	if err != nil {
-		return "", fmt.Errorf("get ref: %w", err)
-	}
-	currentTree, _, err := client.Git.GetTree(ctx, owner, repo, currentRef.GetObject().GetSHA(), false)
-	if err != nil {
-		return "", fmt.Errorf("get tree: %w", err)
-	}
-	var entrys []github.TreeEntry
-	for i := range files {
-		info, err := os.Stat(files[i])
-		if err != nil {
-			return "", fmt.Errorf("stat file: %w", err)
-		}
-		mode := fmt.Sprintf("100%o", info.Mode())
-		content, err := os.ReadFile(files[i])
-		if err != nil {
-			return "", fmt.Errorf("open file: %w", err)
-		}
-		sha := sha1.New()
-		sha.Write([]byte(fmt.Sprintf("blob %d", len(content))))
-		sha.Write([]byte{0})
-		sha.Write(content)
-		localSHA := hex.EncodeToString(sha.Sum(nil))
-
-		changed := true
-		for _, entrie := range currentTree.Entries {
-			if entrie.GetPath() != files[i] {
-				continue
-			}
-			if entrie.GetSHA() == localSHA && entrie.GetMode() == mode {
-				changed = false
-			}
-		}
-		log.Println(files[i], changed)
-		if !changed {
-			continue
-		}
-		blob, resp, err := client.Git.GetBlob(ctx, owner, repo, localSHA)
-		if err != nil {
-			if resp.StatusCode != http.StatusNotFound {
-				return "", fmt.Errorf("get blob: %w", err)
-			}
-			log.Println("create blob")
-			blob, _, err = client.Git.CreateBlob(ctx, owner, repo, &github.Blob{Content: github.String(string(content))})
-			if err != nil {
-				return "", fmt.Errorf("create blob: %w", err)
-			}
-		}
-		entrys = append(entrys, github.TreeEntry{
-			Path: github.String(files[i]),
-			Mode: github.String(mode),
-			Type: github.String("blob"),
-			SHA:  github.String(blob.GetSHA()),
-		})
-	}
-	entrys = append(entrys, github.TreeEntry{
-		Path: github.String("1"),
-		Mode: github.String("040000"),
-		Type: github.String("tree"),
-	})
-	log.Println(entrys)
-	if len(entrys) == 0 {
-		return "", nil
-	}
-	tree, _, err := client.Git.CreateTree(ctx, owner, repo, currentRef.GetObject().GetSHA(), entrys)
-	if err != nil {
-		return "", fmt.Errorf("create tree: %w", err)
-	}
-	log.Println(tree)
-	parent, _, err := client.Git.GetCommit(ctx, owner, repo, currentRef.GetObject().GetSHA())
-	if err != nil {
-		return "", fmt.Errorf("get parent commit: %w", err)
-	}
-	_, _, err = client.Git.CreateCommit(ctx, owner, repo,
-		&github.Commit{
-			Message: github.String(message),
-			Tree:    tree,
-			Parents: []github.Commit{*parent},
-		},
+func deleteFile(ctx context.Context, client *github.Client, owner, repo, path, message, branch string) (_changed bool, _err error) {
+	fileContent, _, resp, err := client.Repositories.GetContents(
+		ctx, owner, repo, path,
+		&github.RepositoryContentGetOptions{Ref: branch},
 	)
 	if err != nil {
-		return "", fmt.Errorf("create commit: %w", err)
+		if resp.StatusCode != http.StatusNotFound {
+			return false, fmt.Errorf("get content: %w", err)
+		}
+		return false, nil
 	}
-	ref := &github.Reference{
-		Ref:    github.String(currentRef.GetRef()),
-		Object: &github.GitObject{SHA: github.String(currentRef.GetObject().GetSHA())},
-	}
-	update, _, err := client.Git.UpdateRef(ctx, owner, repo, ref, false)
+	_, _, err = client.Repositories.DeleteFile(ctx, owner, repo, path, &github.RepositoryContentFileOptions{
+		Message: &message,
+		SHA:     fileContent.SHA,
+	})
 	if err != nil {
-		return "", fmt.Errorf("update ref: %w", err)
+		return false, fmt.Errorf("delete file: %w", err)
 	}
-	return update.GetObject().GetSHA(), nil
+	return true, nil
 }
