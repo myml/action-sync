@@ -174,14 +174,20 @@ func main() {
 				continue
 			}
 			if autoMerge {
-				_, _, err = client.PullRequests.Merge(ctx,
-					branch.Owner, branch.Repo,
-					pr.GetNumber(), message,
-					&github.PullRequestOptions{SHA: pr.GetHead().GetSHA(), MergeMethod: "squash"},
-				)
+				_, _, err = client.PullRequests.CreateReview(ctx, branch.Owner, branch.Repo, pr.GetNumber(), &github.PullRequestReviewRequest{
+					Event: github.String("APPROVE"),
+				})
 				if err != nil {
-					log.Println("merge pull request: %w", err)
-					continue
+					log.Println("approve pull request: %w", err)
+				} else {
+					_, _, err = client.PullRequests.Merge(ctx,
+						branch.Owner, branch.Repo,
+						pr.GetNumber(), message,
+						&github.PullRequestOptions{SHA: pr.GetHead().GetSHA(), MergeMethod: "squash"},
+					)
+					if err != nil {
+						log.Println("merge pull request: %w", err)
+					}
 				}
 			}
 		}
