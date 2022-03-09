@@ -22,6 +22,7 @@ type Config struct {
 	Src      string   `json:"src"`
 	Dest     string   `json:"dest"`
 	Branches []string `json:"branches"`
+	Delete   bool     `json:"delete"`
 }
 type Branch struct {
 	Owner  string
@@ -29,6 +30,8 @@ type Branch struct {
 	Branch string
 	Base   string
 }
+
+var tempBranchRegexp = regexp.MustCompile(`sync/t_\d+`)
 
 func main() {
 	privateKey := []byte(os.Getenv("PRIVATE_KEY"))
@@ -79,16 +82,28 @@ func main() {
 			if dryRun {
 				continue
 			}
-
-			var syncBranches []string
-			branches, _, err := client.Repositories.ListBranches(ctx, owner, repo, nil)
-			if err != nil {
-				log.Fatal(err)
+			// get all branch
+			var branches []*github.Branch
+			listBranchOpt := github.ListOptions{}
+			for {
+				bs, resp, err := client.Repositories.ListBranches(ctx, owner, repo, &listBranchOpt)
+				if err != nil {
+					log.Fatal(err)
+				}
+				branches = append(branches, bs...)
+				if resp.NextPage == 0 {
+					break
+				}
+				listBranchOpt.Page = resp.NextPage
 			}
+			var syncBranches []string
 			// match branch
 			if len(config.Branches) == 0 {
 				for i := range branches {
-					syncBranches = append(syncBranches, *branches[i].Name)
+					if tempBranchRegexp.MatchString(branches[i].GetName()) {
+						continue
+					}
+					syncBranches = append(syncBranches, branches[i].GetName())
 				}
 			} else {
 				for i := range config.Branches {
@@ -109,6 +124,7 @@ func main() {
 				key := fmt.Sprintf("%s/%s/%s", owner, repo, syncBranches[i])
 				var branch Branch
 				branch, ok := cleanupBranch[key]
+				// create temp branch
 				if !ok {
 					tempBranch := fmt.Sprintf("sync/t_%d/%s", time.Now().Unix(), syncBranches[i])
 					tempRef := fmt.Sprintf("refs/heads/%s", tempBranch)
@@ -124,7 +140,6 @@ func main() {
 					branch = Branch{Owner: owner, Repo: repo, Base: syncBranches[i], Branch: tempBranch}
 					cleanupBranch[key] = branch
 				}
-
 				changed, err := sendFile(ctx, client, config.Src, owner, repo, path, message, branch.Branch)
 				if err != nil {
 					log.Fatal(err)

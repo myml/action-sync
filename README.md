@@ -102,7 +102,9 @@ jobs:
     "src": "workflow-templates/check.yml",
     "dest": "peeweep-test/test-action/.github/workflows/check.yml",
     // 可选项，默认同步文件到所有分支
-    "branches": ["main"]
+    "branches": ["main"],
+    // 可选项，是否从仓库删除文件
+    "delete": false,
   }
 ]
 ```

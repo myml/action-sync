@@ -32,8 +32,7 @@ runs:
     - name: install action binary
       shell: bash
       run: |
-        go env -w GO111MODULE=on
-        go env -w GOPROXY=direct
+        go env -w GO111MODULE=on GOPROXY=direct
         go install github.com/linuxdeepin/action-sync@main
     - name: command
       shell: bash
