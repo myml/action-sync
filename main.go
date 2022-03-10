@@ -57,7 +57,6 @@ func main() {
 	}
 	client := github.NewClient(&http.Client{Transport: itr})
 	ctx := context.Background()
-
 	// Sync all repositories if do not repos changed
 	for _, file := range strings.Fields(files) {
 		data, err := os.ReadFile(file)
@@ -180,15 +179,7 @@ func main() {
 				continue
 			}
 			if autoMerge {
-				time.Sleep(time.Second)
-				_, _, err = client.PullRequests.CreateReview(ctx, branch.Owner, branch.Repo, pr.GetNumber(), &github.PullRequestReviewRequest{
-					Event: github.String("APPROVE"),
-					Body:  github.String("Auto Marge"),
-				})
-				if err != nil {
-					log.Println("approve pull request: ", err)
-					continue
-				}
+				time.Sleep(time.Second / 10)
 				_, _, err = client.PullRequests.Merge(ctx,
 					branch.Owner, branch.Repo,
 					pr.GetNumber(), message,
