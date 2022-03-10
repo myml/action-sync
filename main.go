@@ -98,29 +98,30 @@ func main() {
 			}
 			var syncBranches []string
 			// match branch
-			if len(config.Branches) == 0 {
-				for i := range branches {
-					branchName := branches[i].GetName()
-					if tempBranchRegexp.MatchString(branchName) {
-						// clean temp branch
-						cleanupBranch[branchName] = Branch{Owner: owner, Repo: repo, Branch: branchName}
+			for i := range branches {
+				branchName := branches[i].GetName()
+				if tempBranchRegexp.MatchString(branchName) {
+					// clean temp branch
+					cleanupBranch[branchName] = Branch{Owner: owner, Repo: repo, Branch: branchName}
+					continue
+				}
+				if len(config.Branches) == 0 {
+					syncBranches = append(syncBranches, branchName)
+					continue
+				}
+				match := false
+				for j := range config.Branches {
+					ok, err := regexp.MatchString(config.Branches[j], branchName)
+					if err != nil {
+						log.Printf("branch [%s] invalid: %s", config.Branches[j], err)
+					}
+					if ok {
+						match = true
 						continue
 					}
-					syncBranches = append(syncBranches, branchName)
 				}
-			} else {
-				for i := range config.Branches {
-					reg := regexp.MustCompile(config.Branches[i])
-					match := false
-					for j := range branches {
-						if reg.Match([]byte(*branches[j].Name)) {
-							match = true
-							break
-						}
-					}
-					if match {
-						syncBranches = append(syncBranches, *branches[i].Name)
-					}
+				if match {
+					syncBranches = append(syncBranches, branchName)
 				}
 			}
 			for i := range syncBranches {
