@@ -130,7 +130,7 @@ func main() {
 				branch, ok := cleanupBranch[key]
 				// create temp branch
 				if !ok {
-					tempBranch := fmt.Sprintf("sync/t_%d/%s", time.Now().Unix(), syncBranches[i])
+					tempBranch := fmt.Sprintf("sync/t_%d/%s/tmp", time.Now().Unix(), syncBranches[i])
 					tempRef := fmt.Sprintf("refs/heads/%s", tempBranch)
 					ref, _, err := client.Git.GetRef(ctx, owner, repo, fmt.Sprintf("heads/%s", syncBranches[i]))
 					if err != nil {
