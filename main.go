@@ -95,15 +95,19 @@ func main() {
 					break
 				}
 				listBranchOpt.Page = resp.NextPage
+				time.Sleep(time.Second / 10)
 			}
 			var syncBranches []string
 			// match branch
 			if len(config.Branches) == 0 {
 				for i := range branches {
-					if tempBranchRegexp.MatchString(branches[i].GetName()) {
+					branchName := branches[i].GetName()
+					if tempBranchRegexp.MatchString(branchName) {
+						// clean temp branch
+						cleanupBranch[branchName] = Branch{Owner: owner, Repo: repo, Branch: branchName}
 						continue
 					}
-					syncBranches = append(syncBranches, branches[i].GetName())
+					syncBranches = append(syncBranches, branchName)
 				}
 			} else {
 				for i := range config.Branches {
@@ -121,6 +125,7 @@ func main() {
 				}
 			}
 			for i := range syncBranches {
+				time.Sleep(time.Second / 10)
 				key := fmt.Sprintf("%s/%s/%s", owner, repo, syncBranches[i])
 				var branch Branch
 				branch, ok := cleanupBranch[key]
@@ -163,40 +168,43 @@ func main() {
 		}
 
 		for _, branch := range mergeBranch {
+			time.Sleep(time.Second / 10)
 			pr, _, err := client.PullRequests.Create(ctx, branch.Owner, branch.Repo, &github.NewPullRequest{
-				Title:               &message,
+				Title:               github.String("Auto Marge"),
 				Head:                github.String(branch2Ref(branch.Branch)),
 				Base:                github.String(branch2Ref(branch.Base)),
 				MaintainerCanModify: github.Bool(true),
 			})
 			if err != nil {
-				log.Println("create pull request: %w", err)
+				log.Println("create pull request: ", err)
 				continue
 			}
 			if autoMerge {
+				time.Sleep(time.Second)
 				_, _, err = client.PullRequests.CreateReview(ctx, branch.Owner, branch.Repo, pr.GetNumber(), &github.PullRequestReviewRequest{
 					Event: github.String("APPROVE"),
 					Body:  github.String("Auto Marge"),
 				})
 				if err != nil {
-					log.Println("approve pull request: %w", err)
-				} else {
-					_, _, err = client.PullRequests.Merge(ctx,
-						branch.Owner, branch.Repo,
-						pr.GetNumber(), message,
-						&github.PullRequestOptions{SHA: pr.GetHead().GetSHA(), MergeMethod: "squash"},
-					)
-					if err != nil {
-						log.Println("merge pull request: %w", err)
-					}
+					log.Println("approve pull request: ", err)
+					continue
+				}
+				_, _, err = client.PullRequests.Merge(ctx,
+					branch.Owner, branch.Repo,
+					pr.GetNumber(), message,
+					&github.PullRequestOptions{SHA: pr.GetHead().GetSHA(), MergeMethod: "squash"},
+				)
+				if err != nil {
+					log.Println("merge pull request: %w", err)
 				}
 			}
 		}
 		if autoMerge {
 			for _, branch := range cleanupBranch {
+				time.Sleep(time.Second / 10)
 				_, err := client.Git.DeleteRef(ctx, branch.Owner, branch.Repo, branch2Ref(branch.Branch))
 				if err != nil {
-					log.Println("delete ref faild: %w", err)
+					log.Println("delete ref faild: ", err)
 				}
 			}
 		}
