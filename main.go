@@ -170,7 +170,7 @@ func main() {
 		for _, branch := range mergeBranch {
 			time.Sleep(time.Second / 10)
 			pr, _, err := client.PullRequests.Create(ctx, branch.Owner, branch.Repo, &github.NewPullRequest{
-				Title:               github.String("Auto Marge"),
+				Title:               github.String("File Sync from linuxdeepin/.github"),
 				Head:                github.String(branch2Ref(branch.Branch)),
 				Base:                github.String(branch2Ref(branch.Base)),
 				MaintainerCanModify: github.Bool(true),
