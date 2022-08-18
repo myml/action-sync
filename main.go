@@ -6,14 +6,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
-
-	"github.com/google/go-github/github"
 )
 
 type Config struct {
@@ -40,7 +37,6 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
-	client := github.NewClient(&http.Client{})
 	ctx := context.Background()
 
 	// Sync all repositories if do not repos changed
@@ -74,32 +70,6 @@ func main() {
 			if dryRun {
 				continue
 			}
-			var syncBranches []string
-			branches, _, err := client.Repositories.ListBranches(ctx, owner, repo, nil)
-			if err != nil {
-				log.Fatal(err)
-			}
-			// match branch
-			for i := range config.Branches {
-				reg := regexp.MustCompile(config.Branches[i])
-				match := false
-				for j := range branches {
-					if reg.Match([]byte(*branches[j].Name)) {
-						match = true
-						break
-					}
-				}
-				if match {
-					syncBranches = append(syncBranches, *branches[i].Name)
-				}
-			}
-			// all branch
-			if len(config.Branches) == 0 {
-				for i := range branches {
-					syncBranches = append(syncBranches, *branches[i].Name)
-				}
-			}
-
 			workdir := filepath.Join(tmpDir, owner, repo)
 			if changedBranches[workdir] == nil {
 				changedBranches[workdir] = make(map[string]bool)
@@ -108,6 +78,39 @@ func main() {
 					log.Fatal(err)
 				}
 			}
+			var branches []string
+			out, err := execCommand(context.Background(), workdir, "git", "branch", "-r")
+			if err != nil {
+				log.Fatal(err)
+			}
+			lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+			lines = lines[1:]
+			for i := range lines {
+				branch := strings.TrimPrefix(strings.TrimSpace(lines[i]), "origin/")
+				branches = append(branches, branch)
+			}
+			var syncBranches []string
+			// match branch
+			for i := range config.Branches {
+				reg := regexp.MustCompile(config.Branches[i])
+				match := false
+				for j := range branches {
+					if reg.Match([]byte(branches[j])) {
+						match = true
+						break
+					}
+				}
+				if match {
+					syncBranches = append(syncBranches, branches[i])
+				}
+			}
+			// all branch
+			if len(config.Branches) == 0 {
+				for i := range branches {
+					syncBranches = append(syncBranches, branches[i])
+				}
+			}
+
 			for _, branch := range syncBranches {
 				_, err = execCommand(ctx, workdir, "git", "checkout", branch)
 				if err != nil {
