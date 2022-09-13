@@ -125,6 +125,10 @@ func main() {
 				if err != nil {
 					log.Fatal(err)
 				}
+				_, err = execCommand(ctx, workdir, "git", "add", "--force", ":/")
+				if err != nil {
+					log.Fatal(err)
+				}
 				// 判断是否有文件变动
 				out, err := execCommand(ctx, workdir, "git", "status", "-s")
 				if err != nil {
@@ -132,10 +136,6 @@ func main() {
 				}
 				if len(out) == 0 {
 					continue
-				}
-				_, err = execCommand(ctx, workdir, "git", "add", ":/")
-				if err != nil {
-					log.Fatal(err)
 				}
 				// 多个变动合并成一个提交
 				if changedBranches[workdir][branch] {
