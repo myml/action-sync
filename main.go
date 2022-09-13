@@ -139,12 +139,12 @@ func main() {
 				}
 				// 多个变动合并成一个提交
 				if changedBranches[workdir][branch] {
-					_, err = execCommand(ctx, workdir, "git", "commit", "--amend", "-a", "-m", `"`+message+`"`)
+					_, err = execCommand(ctx, workdir, "git", "commit", "--amend", "-a", "-m", message)
 					if err != nil {
 						log.Fatal(err)
 					}
 				} else {
-					_, err = execCommand(ctx, workdir, "git", "commit", "-a", "-m", `"`+message+`"`)
+					_, err = execCommand(ctx, workdir, "git", "commit", "-a", "-m", message)
 					if err != nil {
 						log.Fatal(err)
 					}
