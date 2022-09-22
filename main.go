@@ -162,6 +162,11 @@ func main() {
 				}
 			}
 		}
+		// 清理临时目录
+		err = os.RemoveAll(tmpDir)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
