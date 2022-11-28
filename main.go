@@ -14,9 +14,10 @@ import (
 )
 
 type Config struct {
-	Src      string   `json:"src"`
-	Dest     string   `json:"dest"`
-	Branches []string `json:"branches"`
+	Src        string   `json:"src"`
+	Dest       string   `json:"dest"`
+	DeleteList []string `json:"deletelist"`
+	Branches   []string `json:"branches"`
 }
 type Branch struct {
 	Owner  string
@@ -120,10 +121,20 @@ func main() {
 					logError("err: %v output: %s", err, string(out))
 					continue
 				}
-				_, err = execCommand(ctx, workdir, "mkdir", "-p", filepath.Dir(path))
-				_, err = execCommand(ctx, workdir, "cp", filepath.Join("../../../", config.Src), path)
-				if err != nil {
-					log.Fatal(err)
+				if len(config.DeleteList) > 0 {
+					_, err = execCommand(ctx, workdir, "rm", append([]string{"-f"}, config.DeleteList...)...)
+					if err != nil {
+						log.Fatal(err)
+					}
+				} else {
+					_, err = execCommand(ctx, workdir, "mkdir", "-p", filepath.Dir(path))
+					if err != nil {
+						log.Fatal(err)
+					}
+					_, err = execCommand(ctx, workdir, "cp", filepath.Join("../../../", config.Src), path)
+					if err != nil {
+						log.Fatal(err)
+					}
 				}
 				_, err = execCommand(ctx, workdir, "git", "add", "--force", ":/")
 				if err != nil {
@@ -188,9 +199,9 @@ func execCommand(ctx context.Context, workdir string, command string, args ...st
 	}
 	data, err := cmd.CombinedOutput()
 	if err != nil {
-		logDebug("command: %s,error: %s", strings.Join(append([]string{command}, args...), " "), data)
+		logDebug("command: %s, error: %s", strings.Join(append([]string{command}, args...), " "), data)
 	}
-	return data, err
+	return data, fmt.Errorf("%w: %s", err, string(data))
 }
 
 func split(dest string) (owner, repo, path string, err error) {
