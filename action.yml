@@ -28,4 +28,4 @@ runs:
     - name: Sync
       shell: bash
       run: |
-        echo "${{ inputs.files }}" | xargs -d ' ' -i sh '$GITHUB_ACTION_PATH/action-sync -files="{}" -message="${{ inputs.message }}" || exit 255'
+        echo "${{ inputs.files }}" | xargs -d ' ' -i sh -c '$GITHUB_ACTION_PATH/action-sync -files="{}" -message="${{ inputs.message }}" || exit 255'
