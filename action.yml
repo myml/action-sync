@@ -8,7 +8,7 @@ branding:
 inputs:
   files:
     description: "config files"
-    required: true
+    required: false
   files-from:
     description: "read config list from file"
     required: false
@@ -32,4 +32,4 @@ runs:
     - name: Sync
       shell: bash
       run: |
-        (cat "${{ files-from }}" || echo "${{ inputs.files }}") | xargs -d ' ' -i sh -c '$GITHUB_ACTION_PATH/action-sync -files="{}" -message="${{ inputs.message }}" || exit 255'
+        (cat "${{ inputs.files-from }}" || echo "${{ inputs.files }}") | xargs -d ' ' -i sh -c '$GITHUB_ACTION_PATH/action-sync -files="{}" -message="${{ inputs.message }}" || exit 255'
