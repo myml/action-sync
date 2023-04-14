@@ -126,15 +126,14 @@ func main() {
 					if err != nil {
 						log.Fatal(err)
 					}
-				} else {
-					_, err = execCommand(ctx, workdir, "mkdir", "-p", filepath.Dir(path))
-					if err != nil {
-						log.Fatal(err)
-					}
-					_, err = execCommand(ctx, workdir, "cp", filepath.Join("../../../", config.Src), path)
-					if err != nil {
-						log.Fatal(err)
-					}
+				}
+				_, err = execCommand(ctx, workdir, "mkdir", "-p", filepath.Dir(path))
+				if err != nil {
+					log.Fatal(err)
+				}
+				_, err = execCommand(ctx, workdir, "cp", filepath.Join("../../../", config.Src), path)
+				if err != nil {
+					log.Fatal(err)
 				}
 				_, err = execCommand(ctx, workdir, "git", "add", "--force", ":/")
 				if err != nil {
