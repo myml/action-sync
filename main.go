@@ -121,12 +121,6 @@ func main() {
 					logError("err: %v output: %s", err, string(out))
 					continue
 				}
-				if len(config.DeleteList) > 0 {
-					_, err = execCommand(ctx, workdir, "rm", append([]string{"-f"}, config.DeleteList...)...)
-					if err != nil {
-						log.Fatal(err)
-					}
-				}
 				_, err = execCommand(ctx, workdir, "mkdir", "-p", filepath.Dir(path))
 				if err != nil {
 					log.Fatal(err)
@@ -134,6 +128,12 @@ func main() {
 				_, err = execCommand(ctx, workdir, "cp", filepath.Join("../../../", config.Src), path)
 				if err != nil {
 					log.Fatal(err)
+				}
+				if len(config.DeleteList) > 0 {
+					_, err = execCommand(ctx, workdir, "rm", append([]string{"-f"}, config.DeleteList...)...)
+					if err != nil {
+						log.Fatal(err)
+					}
 				}
 				_, err = execCommand(ctx, workdir, "git", "add", "--force", ":/")
 				if err != nil {
