@@ -110,9 +110,7 @@ func main() {
 			}
 			// all branch
 			if len(config.Branches) == 0 {
-				for i := range branches {
-					syncBranches = append(syncBranches, branches[i])
-				}
+				syncBranches = append(syncBranches, branches...)
 			}
 
 			for _, branch := range syncBranches {
@@ -121,6 +119,16 @@ func main() {
 					logError("err: %v output: %s", err, string(out))
 					continue
 				}
+				// 删除文件
+				if len(config.DeleteList) > 0 {
+					_, err = execCommand(ctx, workdir, "rm", append([]string{"-f"}, config.DeleteList...)...)
+					if err != nil {
+						log.Fatal(err)
+					}
+					// 如果有delete_list配置，就不再进行同步
+					return
+				}
+				// 更新文件
 				_, err = execCommand(ctx, workdir, "mkdir", "-p", filepath.Dir(path))
 				if err != nil {
 					log.Fatal(err)
@@ -128,12 +136,6 @@ func main() {
 				_, err = execCommand(ctx, workdir, "cp", filepath.Join("../../../", config.Src), path)
 				if err != nil {
 					log.Fatal(err)
-				}
-				if len(config.DeleteList) > 0 {
-					_, err = execCommand(ctx, workdir, "rm", append([]string{"-f"}, config.DeleteList...)...)
-					if err != nil {
-						log.Fatal(err)
-					}
 				}
 				_, err = execCommand(ctx, workdir, "git", "add", "--force", ":/")
 				if err != nil {
